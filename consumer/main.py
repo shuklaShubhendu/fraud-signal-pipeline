@@ -19,7 +19,7 @@ import signal
 import time
 from datetime import datetime
 
-from aiokafka import AIOKafkaConsumer, TopicPartition
+from aiokafka import AIOKafkaConsumer
 from prometheus_client import start_http_server
 from pydantic import BaseModel, Field, ValidationError
 
@@ -36,7 +36,7 @@ from observability.metrics import (
     transactions_processed_total,
     transactions_processing_errors_total,
 )
-from observability.tracing import get_tracer, setup_tracing
+from observability.tracing import setup_tracing
 
 setup_logging(settings.log_level)
 logger = get_logger("consumer")
@@ -95,9 +95,7 @@ async def process_message(raw_value: bytes, tracer) -> None:
             txn = TransactionMessage(**data)
         except ValidationError as e:
             transactions_processing_errors_total.labels(error_type="validation").inc()
-            await send_to_dead_letter(
-                raw_value, "validation_error", str(e), transaction_id
-            )
+            await send_to_dead_letter(raw_value, "validation_error", str(e), transaction_id)
             return
 
         span.set_attribute("transaction.amount", txn.amount)
@@ -171,9 +169,7 @@ async def process_message(raw_value: bytes, tracer) -> None:
                         },
                     )
 
-                alerts_generated_total.labels(
-                    alert_type="fraud_detected", severity=severity
-                ).inc()
+                alerts_generated_total.labels(alert_type="fraud_detected", severity=severity).inc()
 
                 logger.warning(
                     "fraud_alert_created",
@@ -195,9 +191,7 @@ async def process_message(raw_value: bytes, tracer) -> None:
                 error=str(e),
                 error_type=type(e).__name__,
             )
-            await send_to_dead_letter(
-                raw_value, "processing_error", str(e), transaction_id
-            )
+            await send_to_dead_letter(raw_value, "processing_error", str(e), transaction_id)
 
 
 # ──────────────────────────── Consumer Loop ────────────────────────────

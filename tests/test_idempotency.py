@@ -5,7 +5,6 @@ and verifies that duplicate transaction_id inserts don't
 create duplicate rows (upsert behavior).
 """
 
-import asyncio
 from datetime import datetime, timezone
 
 import pytest
@@ -40,6 +39,7 @@ def postgres_container():
     ) as postgres:
         # Apply schema
         import psycopg2
+
         conn = psycopg2.connect(
             host=postgres.get_container_host_ip(),
             port=postgres.get_exposed_port(5432),
@@ -80,7 +80,8 @@ class TestIdempotency:
         conn = psycopg2.connect(db_config["sync_url"])
         cursor = conn.cursor()
 
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO transactions (
                 transaction_id, card_id, amount, currency, merchant,
                 country, timestamp, is_fraud, fraud_score
@@ -91,7 +92,9 @@ class TestIdempotency:
             ON CONFLICT (transaction_id) DO UPDATE SET
                 fraud_score = EXCLUDED.fraud_score
             RETURNING (xmax = 0) AS is_insert
-        """, (datetime.now(timezone.utc),))
+        """,
+            (datetime.now(timezone.utc),),
+        )
 
         row = cursor.fetchone()
         assert row[0] is True  # is_insert = True (new row)
@@ -114,7 +117,8 @@ class TestIdempotency:
         now = datetime.now(timezone.utc)
 
         # First insert
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO transactions (
                 transaction_id, card_id, amount, currency, merchant,
                 country, timestamp, is_fraud, fraud_score
@@ -124,11 +128,14 @@ class TestIdempotency:
             )
             ON CONFLICT (transaction_id) DO UPDATE SET
                 fraud_score = EXCLUDED.fraud_score
-        """, (now,))
+        """,
+            (now,),
+        )
         conn.commit()
 
         # Second insert (duplicate) with different fraud_score
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO transactions (
                 transaction_id, card_id, amount, currency, merchant,
                 country, timestamp, is_fraud, fraud_score
@@ -139,7 +146,9 @@ class TestIdempotency:
             ON CONFLICT (transaction_id) DO UPDATE SET
                 fraud_score = EXCLUDED.fraud_score
             RETURNING (xmax = 0) AS is_insert
-        """, (now,))
+        """,
+            (now,),
+        )
 
         row = cursor.fetchone()
         assert row[0] is False  # is_insert = False (updated, not inserted)
@@ -167,7 +176,8 @@ class TestIdempotency:
         now = datetime.now(timezone.utc)
 
         for i in range(5):
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO transactions (
                     transaction_id, card_id, amount, currency, merchant,
                     country, timestamp, is_fraud, fraud_score
@@ -177,7 +187,9 @@ class TestIdempotency:
                 )
                 ON CONFLICT (transaction_id) DO UPDATE SET
                     fraud_score = EXCLUDED.fraud_score
-            """, (now, float(i) / 10))
+            """,
+                (now, float(i) / 10),
+            )
             conn.commit()
 
         cursor.execute("SELECT COUNT(*) FROM transactions WHERE transaction_id = 'TXN-IDEM-003'")

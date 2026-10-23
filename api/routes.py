@@ -167,11 +167,13 @@ async def acknowledge_alert(alert_id: int):
 
 # ──────────────────────────── Stats ────────────────────────────
 
+
 @router.get("/stats")
 async def pipeline_stats():
     """Get pipeline statistics — useful for README numbers."""
     async with async_session() as session:
-        result = await session.execute(text("""
+        result = await session.execute(
+            text("""
             SELECT
                 COUNT(*) as total,
                 COUNT(*) FILTER (WHERE is_fraud) as fraud_count,
@@ -180,7 +182,8 @@ async def pipeline_stats():
                 COUNT(*) FILTER (WHERE degraded) as degraded_count,
                 COUNT(DISTINCT card_id) as unique_cards
             FROM transactions
-        """))
+        """)
+        )
         row = result.fetchone()
 
     return {
@@ -195,6 +198,7 @@ async def pipeline_stats():
 
 
 # ──────────────────────────── Webhooks ────────────────────────────
+
 
 @router.post("/webhooks/alert")
 async def receive_alertmanager_webhook(payload: dict):

@@ -4,7 +4,6 @@ Uses testcontainers for PostgreSQL to verify the full flow
 from validated transaction → scoring → database write → API query.
 """
 
-import asyncio
 from datetime import datetime, timezone
 
 import pytest
@@ -27,6 +26,7 @@ def postgres_container():
         dbname="fraud_pipeline",
     ) as postgres:
         import psycopg2
+
         conn = psycopg2.connect(
             host=postgres.get_container_host_ip(),
             port=postgres.get_exposed_port(5432),
@@ -61,7 +61,8 @@ class TestEndToEnd:
         now = datetime.now(timezone.utc)
 
         # Insert
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO transactions (
                 transaction_id, card_id, amount, currency, merchant,
                 country, timestamp, is_fraud, fraud_score, fraud_reasons
@@ -69,7 +70,9 @@ class TestEndToEnd:
                 'TXN-E2E-001', 'CARD-E2E', 150.00, 'USD', 'BestBuy',
                 'USA', %s, TRUE, 0.85, ARRAY['velocity_spike', 'high_amount']
             )
-        """, (now,))
+        """,
+            (now,),
+        )
         conn.commit()
 
         # Read back
@@ -90,8 +93,9 @@ class TestEndToEnd:
 
     def test_alert_creation_and_query(self, postgres_container):
         """Create an alert and verify it links to a transaction."""
-        import psycopg2
         import json
+
+        import psycopg2
 
         host = postgres_container.get_container_host_ip()
         port = postgres_container.get_exposed_port(5432)
@@ -103,7 +107,8 @@ class TestEndToEnd:
         now = datetime.now(timezone.utc)
 
         # Insert transaction first
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO transactions (
                 transaction_id, card_id, amount, currency, merchant,
                 country, timestamp, is_fraud, fraud_score
@@ -112,27 +117,35 @@ class TestEndToEnd:
                 'NGA', %s, TRUE, 0.92
             )
             ON CONFLICT (transaction_id) DO NOTHING
-        """, (now,))
+        """,
+            (now,),
+        )
         conn.commit()
 
         # Insert alert
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO alerts (transaction_id, alert_type, severity, details)
             VALUES ('TXN-E2E-ALERT', 'fraud_detected', 'critical', %s::jsonb)
             RETURNING id
-        """, (json.dumps({"fraud_score": 0.92, "reasons": ["high_amount"]}),))
+        """,
+            (json.dumps({"fraud_score": 0.92, "reasons": ["high_amount"]}),),
+        )
         alert_id = cursor.fetchone()[0]
         conn.commit()
 
         assert alert_id > 0
 
         # Query alert with transaction join
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT a.id, a.severity, t.amount, t.country
             FROM alerts a
             JOIN transactions t ON a.transaction_id = t.transaction_id
             WHERE a.id = %s
-        """, (alert_id,))
+        """,
+            (alert_id,),
+        )
         row = cursor.fetchone()
 
         assert row[1] == "critical"

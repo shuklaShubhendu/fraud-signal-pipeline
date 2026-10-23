@@ -30,6 +30,7 @@ FRAUD_THRESHOLD = 0.65  # Score above this = flagged as fraud
 
 # ──────────────────────────── Rule-Based Scoring ────────────────────────────
 
+
 def score_velocity(amount: float, card_id: str, recent_counts: dict) -> tuple[float, str | None]:
     """Check for velocity anomalies (many transactions in short window)."""
     count = recent_counts.get(card_id, 0)
@@ -99,6 +100,7 @@ def apply_rules(
 
 
 # ──────────────────────────── Model-Based Scoring ────────────────────────────
+
 
 class AnomalyModel:
     """Wrapper around IsolationForest for transaction anomaly scoring."""
@@ -220,6 +222,7 @@ def reset_velocity():
 
 # ──────────────────────────── Combined Scoring ────────────────────────────
 
+
 def score_transaction(
     amount: float,
     country: str,
@@ -243,7 +246,10 @@ def score_transaction(
 
         # Layer 1: Rules (pass velocity_count as a dict for the card)
         rule_score, reasons = apply_rules(
-            amount, country, timestamp, card_id,
+            amount,
+            country,
+            timestamp,
+            card_id,
             recent_counts={card_id: velocity_count},
         )
 
@@ -260,9 +266,7 @@ def score_transaction(
 
         if risk_api_score is not None:
             final_score = (
-                weights["rules"] * rule_score
-                + weights["model"] * model_score
-                + weights["risk_api"] * risk_api_score
+                weights["rules"] * rule_score + weights["model"] * model_score + weights["risk_api"] * risk_api_score
             )
             detection_method = "combined"
         else:

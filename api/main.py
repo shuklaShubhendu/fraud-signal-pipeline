@@ -57,6 +57,7 @@ app.include_router(router)
 # Try to register copilot routes (optional — requires GOOGLE_API_KEY)
 try:
     from copilot.rag import copilot_router
+
     app.include_router(copilot_router, prefix="/copilot", tags=["copilot"])
 except ImportError:
     pass

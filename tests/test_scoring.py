@@ -10,7 +10,6 @@ import pytest
 
 from consumer.scoring import (
     AnomalyModel,
-    FRAUD_THRESHOLD,
     apply_rules,
     score_amount,
     score_card_testing,

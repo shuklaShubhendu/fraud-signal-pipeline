@@ -8,19 +8,43 @@ Implements realistic fraud patterns:
 """
 
 import random
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 
 # Legitimate merchants and countries
 MERCHANTS = [
-    "Amazon", "Walmart", "Target", "BestBuy", "Starbucks",
-    "McDonalds", "Shell Gas", "Uber", "Netflix", "Spotify",
-    "Apple Store", "Google Play", "Steam", "Costco", "HomeDepot",
-    "Zara", "Nike", "Adidas", "Sephora", "Whole Foods",
+    "Amazon",
+    "Walmart",
+    "Target",
+    "BestBuy",
+    "Starbucks",
+    "McDonalds",
+    "Shell Gas",
+    "Uber",
+    "Netflix",
+    "Spotify",
+    "Apple Store",
+    "Google Play",
+    "Steam",
+    "Costco",
+    "HomeDepot",
+    "Zara",
+    "Nike",
+    "Adidas",
+    "Sephora",
+    "Whole Foods",
 ]
 
 MERCHANT_CATEGORIES = [
-    "retail", "grocery", "food", "gas", "entertainment",
-    "subscription", "travel", "electronics", "clothing", "health",
+    "retail",
+    "grocery",
+    "food",
+    "gas",
+    "entertainment",
+    "subscription",
+    "travel",
+    "electronics",
+    "clothing",
+    "health",
 ]
 
 COUNTRIES = ["USA", "CAN", "GBR", "DEU", "FRA", "JPN", "AUS", "IND", "BRA", "MEX"]
@@ -59,17 +83,19 @@ def inject_velocity_spike(card_id: str, base_time: datetime) -> list[dict]:
     transactions = []
     for i in range(count):
         t = base_time + timedelta(seconds=random.randint(5, 90))
-        transactions.append({
-            "card_id": card_id,
-            "amount": round(random.uniform(50.00, 2000.00), 2),
-            "currency": "USD",
-            "merchant": random.choice(MERCHANTS),
-            "merchant_category": random.choice(MERCHANT_CATEGORIES),
-            "country": random.choice(COUNTRIES[:3]),  # Same region
-            "timestamp": t.isoformat(),
-            "is_fraud_injected": True,
-            "fraud_pattern": "velocity_spike",
-        })
+        transactions.append(
+            {
+                "card_id": card_id,
+                "amount": round(random.uniform(50.00, 2000.00), 2),
+                "currency": "USD",
+                "merchant": random.choice(MERCHANTS),
+                "merchant_category": random.choice(MERCHANT_CATEGORIES),
+                "country": random.choice(COUNTRIES[:3]),  # Same region
+                "timestamp": t.isoformat(),
+                "is_fraud_injected": True,
+                "fraud_pattern": "velocity_spike",
+            }
+        )
     return transactions
 
 
@@ -117,17 +143,19 @@ def inject_odd_hour_high_amount(card_id: str, base_time: datetime) -> list[dict]
     odd_hour = random.randint(2, 5)
     timestamp = base_time.replace(hour=odd_hour, minute=random.randint(0, 59))
 
-    return [{
-        "card_id": card_id,
-        "amount": round(random.uniform(2000.00, 9999.99), 2),
-        "currency": "USD",
-        "merchant": random.choice(MERCHANTS),
-        "merchant_category": random.choice(["electronics", "retail"]),
-        "country": random.choice(FRAUD_COUNTRIES + COUNTRIES[:2]),
-        "timestamp": timestamp.isoformat(),
-        "is_fraud_injected": True,
-        "fraud_pattern": "odd_hour_high_amount",
-    }]
+    return [
+        {
+            "card_id": card_id,
+            "amount": round(random.uniform(2000.00, 9999.99), 2),
+            "currency": "USD",
+            "merchant": random.choice(MERCHANTS),
+            "merchant_category": random.choice(["electronics", "retail"]),
+            "country": random.choice(FRAUD_COUNTRIES + COUNTRIES[:2]),
+            "timestamp": timestamp.isoformat(),
+            "is_fraud_injected": True,
+            "fraud_pattern": "odd_hour_high_amount",
+        }
+    ]
 
 
 def inject_card_testing(card_id: str, base_time: datetime) -> list[dict]:
@@ -138,17 +166,19 @@ def inject_card_testing(card_id: str, base_time: datetime) -> list[dict]:
     count = random.randint(3, 6)
     transactions = []
     for i in range(count):
-        transactions.append({
-            "card_id": card_id,
-            "amount": round(random.choice([1.00, 2.00, 5.00, 0.50, 0.01]), 2),
-            "currency": "USD",
-            "merchant": random.choice(MERCHANTS),
-            "merchant_category": "retail",
-            "country": random.choice(COUNTRIES),
-            "timestamp": (base_time + timedelta(seconds=random.randint(30, 300))).isoformat(),
-            "is_fraud_injected": True,
-            "fraud_pattern": "card_testing",
-        })
+        transactions.append(
+            {
+                "card_id": card_id,
+                "amount": round(random.choice([1.00, 2.00, 5.00, 0.50, 0.01]), 2),
+                "currency": "USD",
+                "merchant": random.choice(MERCHANTS),
+                "merchant_category": "retail",
+                "country": random.choice(COUNTRIES),
+                "timestamp": (base_time + timedelta(seconds=random.randint(30, 300))).isoformat(),
+                "is_fraud_injected": True,
+                "fraud_pattern": "card_testing",
+            }
+        )
     return transactions
 
 

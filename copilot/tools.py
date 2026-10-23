@@ -56,10 +56,12 @@ async def fetch_recent_metrics(metric_names: list[str] | None = None, minutes: i
                         for result in data["data"]["result"]:
                             labels = result.get("metric", {})
                             value = result.get("value", [None, None])[1]
-                            values.append({
-                                "labels": {k: v for k, v in labels.items() if k != "__name__"},
-                                "value": value,
-                            })
+                            values.append(
+                                {
+                                    "labels": {k: v for k, v in labels.items() if k != "__name__"},
+                                    "value": value,
+                                }
+                            )
                         results[metric] = values
                     else:
                         results[metric] = "no_data"
@@ -76,10 +78,12 @@ async def fetch_recent_metrics(metric_names: list[str] | None = None, minutes: i
                             for result in rate_data["data"]["result"]:
                                 labels = result.get("metric", {})
                                 value = result.get("value", [None, None])[1]
-                                rate_values.append({
-                                    "labels": {k: v for k, v in labels.items() if k != "__name__"},
-                                    "rate_per_second": value,
-                                })
+                                rate_values.append(
+                                    {
+                                        "labels": {k: v for k, v in labels.items() if k != "__name__"},
+                                        "rate_per_second": value,
+                                    }
+                                )
                             results[f"{metric}_rate"] = rate_values
 
                 except Exception as e:

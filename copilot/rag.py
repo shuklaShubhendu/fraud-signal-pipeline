@@ -8,7 +8,6 @@ described in the Visa JD.
 Endpoint: POST /copilot/incident/{alert_id}
 """
 
-import os
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
@@ -46,10 +45,12 @@ def _init_rag():
         documents = []
         for md_file in RUNBOOKS_DIR.glob("*.md"):
             content = md_file.read_text(encoding="utf-8")
-            documents.append({
-                "content": content,
-                "source": md_file.name,
-            })
+            documents.append(
+                {
+                    "content": content,
+                    "source": md_file.name,
+                }
+            )
 
         if not documents:
             logger.warning("no_runbooks_found", dir=str(RUNBOOKS_DIR))
@@ -164,10 +165,9 @@ async def incident_copilot(alert_id: int):
     # Step 2: Retrieve relevant runbook sections
     query = f"Alert: {alert['alert_type']}, severity: {alert['severity']}, fraud score: {alert['fraud_score']}, degraded: {alert['degraded']}"
     relevant_docs = _vectorstore.similarity_search(query, k=4)
-    runbook_context = "\n\n---\n\n".join([
-        f"**Source: {doc.metadata.get('source', 'unknown')}**\n{doc.page_content}"
-        for doc in relevant_docs
-    ])
+    runbook_context = "\n\n---\n\n".join(
+        [f"**Source: {doc.metadata.get('source', 'unknown')}**\n{doc.page_content}" for doc in relevant_docs]
+    )
 
     # Step 3: Fetch live metrics (agent tool call)
     try:

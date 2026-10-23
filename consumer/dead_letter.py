@@ -43,7 +43,9 @@ async def send_to_dead_letter(
     producer = await get_dead_letter_producer()
 
     envelope = {
-        "original_message": original_message.decode("utf-8") if isinstance(original_message, bytes) else original_message,
+        "original_message": original_message.decode("utf-8")
+        if isinstance(original_message, bytes)
+        else original_message,
         "transaction_id": transaction_id,
         "reason": reason,
         "error_details": error_details,

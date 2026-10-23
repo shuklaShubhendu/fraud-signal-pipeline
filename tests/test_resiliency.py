@@ -5,7 +5,7 @@ correctly by falling back to rules-only scoring (graceful degradation).
 """
 
 import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import httpx
 import pytest

@@ -106,7 +106,7 @@ class AsyncCircuitBreaker:
         # Run outside the lock so we don't hold it during I/O
         try:
             result = await coro_func(*args, **kwargs)
-        except Exception as exc:
+        except Exception:
             await self._record_failure()
             raise
         else:

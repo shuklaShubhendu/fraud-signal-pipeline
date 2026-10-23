@@ -65,6 +65,7 @@ async def produce_transactions():
                     break
 
                 import random
+
                 card_id = random.choice(CARD_IDS)
                 now = datetime.now(timezone.utc)
 
