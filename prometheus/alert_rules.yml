@@ -1,0 +1,50 @@
+groups:
+  - name: fraud_pipeline_alerts
+    rules:
+      # Alert 1: Error rate > 2%
+      - alert: HighErrorRate
+        expr: |
+          (
+            rate(transactions_processing_errors_total[5m])
+            / rate(transactions_processed_total[5m])
+          ) > 0.02
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High error rate in fraud pipeline"
+          description: "Error rate is {{ $value | humanizePercentage }} (threshold: 2%)"
+          runbook: "docs/runbooks/db-down.md"
+
+      # Alert 2: Consumer lag > 1000
+      - alert: HighConsumerLag
+        expr: kafka_consumer_lag > 1000
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Kafka consumer lag is high"
+          description: "Consumer lag is {{ $value }} messages (threshold: 1000)"
+          runbook: "docs/runbooks/consumer-lag.md"
+
+      # Alert 3: Circuit breaker open > 2 minutes
+      - alert: CircuitBreakerOpen
+        expr: circuit_breaker_state == 1
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Circuit breaker is open — degraded mode active"
+          description: "Risk API circuit breaker has been open for more than 2 minutes"
+          runbook: "docs/runbooks/breaker-open.md"
+
+      # Alert 4: Database connection errors
+      - alert: DatabaseErrors
+        expr: rate(database_errors_total[5m]) > 0.1
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Database connection errors detected"
+          description: "Database error rate: {{ $value }}/s"
+          runbook: "docs/runbooks/db-down.md"

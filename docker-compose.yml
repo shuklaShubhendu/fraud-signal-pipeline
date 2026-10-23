@@ -1,0 +1,171 @@
+services:
+  # ──────────────────────────── Infrastructure ────────────────────────────
+
+  redpanda:
+    image: docker.redpanda.com/redpandadata/redpanda:v23.3.5
+    container_name: redpanda
+    command:
+      - redpanda
+      - start
+      - --smp=1
+      - --memory=512M
+      - --overprovisioned
+      - --kafka-addr=internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr=internal://redpanda:9092,external://localhost:19092
+      - --pandaproxy-addr=internal://0.0.0.0:8082,external://0.0.0.0:18082
+      - --advertise-pandaproxy-addr=internal://redpanda:8082,external://localhost:18082
+    ports:
+      - "19092:19092"
+      - "18082:18082"
+    volumes:
+      - redpanda_data:/var/lib/redpanda/data
+    healthcheck:
+      test: ["CMD", "rpk", "cluster", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redpanda-init:
+    image: docker.redpanda.com/redpandadata/redpanda:v23.3.5
+    container_name: redpanda-init
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        rpk topic create transactions --brokers redpanda:9092 --partitions 3 --replicas 1 || true
+        rpk topic create dead-letter --brokers redpanda:9092 --partitions 1 --replicas 1 || true
+        echo "Topics created successfully"
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres
+    environment:
+      POSTGRES_DB: fraud_pipeline
+      POSTGRES_USER: pipeline
+      POSTGRES_PASSWORD: pipeline_secret
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pipeline -d fraud_pipeline"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.52
+    container_name: jaeger
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16686:16686"   # Jaeger UI
+      - "4317:4317"     # OTLP gRPC
+      - "4318:4318"     # OTLP HTTP
+
+  prometheus:
+    image: prom/prometheus:v2.48.1
+    container_name: prometheus
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus/alert_rules.yml:/etc/prometheus/alert_rules.yml
+    ports:
+      - "9090:9090"
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--web.enable-lifecycle"
+
+  alertmanager:
+    image: prom/alertmanager:v0.26.0
+    container_name: alertmanager
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+    ports:
+      - "9093:9093"
+
+  grafana:
+    image: grafana/grafana:10.2.3
+    container_name: grafana
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+
+  # ──────────────────────────── Application ────────────────────────────
+
+  risk-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: risk-api
+    command: ["python", "-m", "risk_api.main"]
+    ports:
+      - "8001:8001"
+    env_file:
+      - .env.example
+      - path: .env  # optional local override
+        required: false
+
+  consumer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # No container_name — allows `docker compose up --scale consumer=3`
+    command: ["python", "-m", "consumer.main"]
+    ports:
+      - "8002"
+    env_file:
+      - .env.example
+      - path: .env
+        required: false
+    depends_on:
+      redpanda-init:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      risk-api:
+        condition: service_started
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: api
+    command: ["python", "-m", "api.main"]
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env.example
+      - path: .env
+        required: false
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  generator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # No container_name — allows scaling
+    command: ["python", "-m", "generator.main"]
+    env_file:
+      - .env.example
+      - path: .env
+        required: false
+    depends_on:
+      redpanda-init:
+        condition: service_completed_successfully
+
+volumes:
+  redpanda_data:
+  postgres_data:
