@@ -166,7 +166,7 @@ class AnomalyModel:
         raw_score = -self.model.decision_function(features)[0]
         # Normalize to 0-1 range
         normalized = max(0.0, min(1.0, (raw_score + 0.5) / 1.0))
-        return round(normalized, 4)
+        return round(float(normalized), 4)
 
 
 # Global model instance
@@ -274,12 +274,12 @@ def score_transaction(
             final_score = 0.5 * rule_score + 0.5 * model_score
             detection_method = "rules_and_model"
 
-        final_score = round(min(1.0, final_score), 4)
+        final_score = round(float(min(1.0, final_score)), 4)
 
         if model_score > 0.7 and "anomaly_model: high anomaly score" not in reasons:
             reasons.append(f"anomaly_model: isolation forest score {model_score:.3f}")
 
-        is_fraud = final_score >= FRAUD_THRESHOLD
+        is_fraud = bool(final_score >= FRAUD_THRESHOLD)
 
         # Record metrics
         fraud_score_histogram.observe(final_score)
